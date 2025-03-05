@@ -49,6 +49,12 @@
 #include <sys/utsname.h>
 #endif  // HWY_OS_APPLE
 
+
+#if HWY_OS_AIX
+// to determine PPC level later in detect targets
+#include <sys/systemcfg.h>
+#endif // HWY_OS_AIX
+
 namespace hwy {
 namespace {
 
@@ -624,6 +630,25 @@ int64_t DetectTargets() {
     }
   }  // VSX
 #endif  // defined(AT_HWCAP) && defined(AT_HWCAP2)
+
+#ifdef HWY_OS_AIX
+  // AIX does have HWCAP use alternative method to get the CPU type
+  // Cast from int to unsigned to ensure comparisons work for all bits in
+  // the bit mask, even the top bit
+  unsigned implementation = (unsigned) _system_configuration.implementation;
+
+  if (implementation >= 0x10000) { // power 8
+      bits |= HWY_PPC8;
+  }
+
+  if (implementation >= 0x20000) { // power 9
+      bits |= HWY_PPC9;
+  }
+
+  if (implementation >= 0x40000u) { // power 10
+    bits |= HWY_PPC10;
+  }
+#endif
 
   return bits;
 }
